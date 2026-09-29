@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SSH Manager — Railway</title>
+<style>
+:root{
+  --bg:#0a0e1a; --card:#151b2b; --card-2:#1a2332; --border:#25304a;
+  --text:#e5e7eb; --dim:#8b95a8; --accent:#3b82f6; --accent-2:#8b5cf6;
+  --success:#10b981; --danger:#ef4444; --warning:#f59e0b;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:var(--bg); color:var(--text); min-height:100vh;
+  background-image:
+    radial-gradient(circle at 15% 0%,rgba(59,130,246,.15),transparent 45%),
+    radial-gradient(circle at 85% 100%,rgba(139,92,246,.15),transparent 45%);
+  padding:24px 16px;
+}
+.container{max-width:1080px;margin:0 auto}
+header{display:flex;align-items:center;gap:16px;margin-bottom:28px}
+.logo{
+  width:52px;height:52px;border-radius:14px;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  display:flex;align-items:center;justify-content:center;font-size:26px;
+  box-shadow:0 8px 24px rgba(59,130,246,.35);
+}
+h1{font-size:22px;font-weight:700}
+.subtitle{color:var(--dim);font-size:13px;margin-top:2px}
+.badge-live{
+  margin-left:auto;display:inline-flex;align-items:center;gap:6px;
+  background:rgba(16,185,129,.12);color:var(--success);
+  padding:6px 12px;border-radius:20px;font-size:12px;font-weight:600;
+  border:1px solid rgba(16,185,129,.3);
+}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--success);
+  box-shadow:0 0 8px var(--success);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+.info-grid{
+  display:grid;gap:12px;margin-bottom:24px;
+  grid-template-columns:repeat(auto-fit,minmax(200px,1fr));
+}
+.info-card{
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:16px;transition:.2s;
+}
+.info-card:hover{border-color:var(--accent)}
+.info-label{font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;font-weight:600;margin-bottom:6px}
+.info-value{font-size:15px;font-weight:600;word-break:break-all}
+.info-value.mono{font-family:'SF Mono',Menlo,Consolas,monospace;font-size:12.5px;color:#93c5fd}
+
+.panel{
+  background:var(--card);border:1px solid var(--border);border-radius:16px;
+  overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.25);
+}
+.panel-head{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:18px 22px;border-bottom:1px solid var(--border);
+  background:linear-gradient(180deg,rgba(255,255,255,.02),transparent);
+}
+.panel-head h2{font-size:16px;font-weight:700}
+.user-list{padding:6px}
+.user-row{
+  display:flex;align-items:center;justify-content:space-between;
+  gap:12px;padding:14px 16px;border-radius:10px;transition:.15s;
+  flex-wrap:wrap;
+}
+.user-row:hover{background:var(--card-2)}
+.user-row + .user-row{border-top:1px solid rgba(37,48,74,.5)}
+.user-info{display:flex;align-items:center;gap:12px;min-width:0}
+.user-avatar{
+  width:40px;height:40px;border-radius:10px;flex-shrink:0;
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  display:flex;align-items:center;justify-content:center;
+  font-weight:700;color:#fff;font-size:16px;
+}
+.user-name{font-weight:600;font-size:14.5px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.user-meta{font-size:12px;color:var(--dim);margin-top:2px;font-family:monospace}
+.badge{
+  font-size:10px;padding:3px 8px;border-radius:6px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.5px;
+}
+.badge.sudo{background:rgba(245,158,11,.15);color:var(--warning);border:1px solid rgba(245,158,11,.3)}
+.user-actions{display:flex;gap:8px;flex-wrap:wrap}
+
+.btn{
+  border:1px solid var(--border);background:var(--card-2);color:var(--text);
+  padding:9px 14px;border-radius:9px;font-size:13px;font-weight:600;
+  cursor:pointer;transition:.15s;font-family:inherit;
+  display:inline-flex;align-items:center;gap:6px;
+}
+.btn:hover{background:#22304a;border-color:#3a4a68}
+.btn.primary{
+  background:linear-gradient(135deg,var(--accent),var(--accent-2));
+  border:none;color:#fff;box-shadow:0 4px 14px rgba(59,130,246,.4);
+}
+.btn.primary:hover{filter:brightness(1.1);transform:translateY(-1px)}
+.btn.danger{color:#fca5a5;border-color:rgba(239,68,68,.35)}
+.btn.danger:hover{background:rgba(239,68,68,.12);border-color:var(--danger)}
+.btn.small{padding:7px 11px;font-size:12px}
+
+.empty{text-align:center;color:var(--dim);padding:48px 20px;font-size:14px}
+
+/* Modal */
+.modal{
+  display:none;position:fixed;inset:0;z-index:100;
+  background:rgba(0,0,0,.7);backdrop-filter:blur(6px);
+  align-items:center;justify-content:center;padding:16px;
+}
+.modal.show{display:flex;animation:fadeIn .18s}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal-card{
+  background:var(--card);border:1px solid var(--border);border-radius:16px;
+  padding:24px;width:100%;max-width:420px;
+  box-shadow:0 20px 60px rgba(0,0,0,.5);
+  animation:slideUp .22s cubic-bezier(.2,.9,.3,1.2);
+}
+@keyframes slideUp{from{transform:translateY(16px);opacity:0}to{transform:translateY(0);opacity:1}}
+.modal-card h3{font-size:18px;margin-bottom:18px;font-weight:700}
+.modal-card label{
+  display:block;font-size:12px;font-weight:600;color:var(--dim);
+  margin-bottom:6px;margin-top:14px;text-transform:uppercase;letter-spacing:.5px;
+}
+.modal-card input[type=text],.modal-card input[type=password]{
+  width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);
+  padding:11px 14px;border-radius:9px;font-size:14px;font-family:inherit;
+  transition:.15s;outline:none;
+}
+.modal-card input:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(59,130,246,.15)}
+.checkbox{
+  display:flex !important;align-items:center;gap:10px;
+  margin-top:16px !important;text-transform:none !important;
+  letter-spacing:0 !important;font-size:14px !important;color:var(--text) !important;
+  cursor:pointer;
+}
+.checkbox input{width:16px;height:16px;accent-color:var(--accent);cursor:pointer}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:24px}
+.modal-actions .btn{flex:1;justify-content:center}
+.dim{color:var(--dim);font-size:13px;margin-bottom:4px}
+
+/* Toast */
+.toast{
+  position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);
+  background:var(--card-2);color:var(--text);padding:13px 22px;border-radius:11px;
+  border:1px solid var(--border);font-size:14px;font-weight:600;
+  box-shadow:0 10px 30px rgba(0,0,0,.5);z-index:200;
+  transition:.3s cubic-bezier(.2,.9,.3,1.2);opacity:0;pointer-events:none;
+}
+.toast.show{transform:translateX(-50%) translateY(0);opacity:1}
+.toast.success{border-color:var(--success);color:#6ee7b7}
+.toast.error{border-color:var(--danger);color:#fca5a5}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo">🔐</div>
+    <div>
+      <h1>SSH Manager</h1>
+      <div class="subtitle">Kelola user SSH langsung dari web</div>
+    </div>
+    <div class="badge-live"><span class="dot"></span> Online</div>
+  </header>
+
+  <section class="info-grid">
+    <div class="info-card">
+      <div class="info-label">Hostname</div>
+      <div class="info-value" id="infoHost">—</div>
+    </div>
+    <div class="info-card">
+      <div class="info-label">IP Address</div>
+      <div class="info-value" id="infoIp">—</div>
+    </div>
+    <div class="info-card">
+      <div class="info-label">SSH Port</div>
+      <div class="info-value" id="infoPort">—</div>
+    </div>
+    <div class="info-card" style="grid-column:span 2">
+      <div class="info-label">SSH Command</div>
+      <div class="info-value mono" id="infoCmd">—</div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <div class="panel-head">
+      <h2>Daftar User</h2>
+      <button class="btn primary" onclick="openAddModal()">＋ Tambah User</button>
+    </div>
+    <div class="user-list" id="userList">
+      <div class="empty">Memuat…</div>
+    </div>
+  </section>
+</div>
+
+<!-- Modal: Tambah User -->
+<div class="modal" id="addModal">
+  <div class="modal-card">
+    <h3>Tambah User Baru</h3>
+    <label>Username</label>
+    <input id="addUsername" type="text" placeholder="contoh: budi" autocomplete="off">
+    <label>Password</label>
+    <input id="addPassword" type="text" placeholder="password" autocomplete="off">
+    <label class="checkbox">
+      <input type="checkbox" id="addSudo" checked>
+      Beri akses sudo
+    </label>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('addModal')">Batal</button>
+      <button class="btn primary" id="addBtn" onclick="addUser()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Ubah Password -->
+<div class="modal" id="pwModal">
+  <div class="modal-card">
+    <h3>Ubah Password</h3>
+    <p class="dim">User: <b id="pwUser" style="color:#93c5fd"></b></p>
+    <label>Password Baru</label>
+    <input id="pwPassword" type="text" placeholder="password baru" autocomplete="off">
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('pwModal')">Batal</button>
+      <button class="btn primary" id="pwBtn" onclick="changePassword()">Simpan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Konfirmasi Hapus -->
+<div class="modal" id="delModal">
+  <div class="modal-card">
+    <h3>Hapus User?</h3>
+    <p class="dim">User <b id="delUser" style="color:#fca5a5"></b> akan dihapus permanen beserta home directory-nya.</p>
+    <div class="modal-actions">
+      <button class="btn" onclick="closeModal('delModal')">Batal</button>
+      <button class="btn danger" id="delBtn" onclick="confirmDelete()">Hapus</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let targetUser = null;
+
+async function api(url, opts = {}) {
+  const res = await fetch(url, {
+    headers: { 'Content-Type': 'application/json' },
+    ...opts
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+function toast(msg, type = 'success') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show ' + type;
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.className = 'toast ' + type; }, 2600);
+}
+
+function openModal(id) {
+  document.getElementById(id).classList.add('show');
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('show');
+}
+// close modal on backdrop click
+document.querySelectorAll('.modal').forEach(m => {
+  m.addEventListener('click', e => { if (e.target === m) m.classList.remove('show'); });
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape')
+    document.querySelectorAll('.modal.show').forEach(m => m.classList.remove('show'));
+});
+
+async function loadInfo() {
+  try {
+    const info = await api('/api/info');
+    document.getElementById('infoHost').textContent = info.hostname || '—';
+    document.getElementById('infoIp').textContent = info.ip || '—';
+    document.getElementById('infoPort').textContent = info.tcpPort || '22';
+    document.getElementById('infoCmd').textContent = info.sshCommand || '—';
+  } catch (e) {}
+}
+
+async function loadUsers() {
+  const el = document.getElementById('userList');
+  try {
+    const users = await api('/api/users');
+    if (!users.length) {
+      el.innerHTML = '<div class="empty">Belum ada user.</div>';
+      return;
+    }
+    el.innerHTML = users.map(u => `
+      <div class="user-row">
+        <div class="user-info">
+          <div class="user-avatar">${u.username[0].toUpperCase()}</div>
+          <div>
+            <div class="user-name">
+              ${escapeHtml(u.username)}
+              ${u.sudo ? '<span class="badge sudo">sudo</span>' : ''}
+            </div>
+            <div class="user-meta">UID ${u.uid} · ${escapeHtml(u.home)}</div>
+          </div>
+        </div>
+        <div class="user-actions">
+          <button class="btn small" onclick="openPwModal('${jsEscape(u.username)}')">🔑 Password</button>
+          <button class="btn small danger" onclick="openDeleteModal('${jsEscape(u.username)}')">🗑 Hapus</button>
+        </div>
+      </div>
+    `).join('');
+  } catch (e) {
+    el.innerHTML = `<div class="empty" style="color:#fca5a5">Error: ${escapeHtml(e.message)}</div>`;
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, c => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+  })[c]);
+}
+function jsEscape(s) { return String(s).replace(/'/g, "\\'"); }
+
+// ---- Add User ----
+function openAddModal() {
+  document.getElementById('addUsername').value = '';
+  document.getElementById('addPassword').value = '';
+  document.getElementById('addSudo').checked = true;
+  openModal('addModal');
+  setTimeout(() => document.getElementById('addUsername').focus(), 100);
+}
+
+async function addUser() {
+  const username = document.getElementById('addUsername').value.trim();
+  const password = document.getElementById('addPassword').value;
+  const sudo = document.getElementById('addSudo').checked;
+  const btn = document.getElementById('addBtn');
+  if (!username || !password) return toast('Username & password wajib diisi', 'error');
+  btn.disabled = true; btn.textContent = 'Menyimpan…';
+  try {
+    await api('/api/users', {
+      method: 'POST',
+      body: JSON.stringify({ username, password, sudo })
+    });
+    toast(`User ${username} berhasil dibuat`);
+    closeModal('addModal');
+    loadUsers();
+  } catch (e) {
+    toast(e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Simpan';
+  }
+}
+
+// ---- Change Password ----
+function openPwModal(username) {
+  targetUser = username;
+  document.getElementById('pwUser').textContent = username;
+  document.getElementById('pwPassword').value = '';
+  openModal('pwModal');
+  setTimeout(() => document.getElementById('pwPassword').focus(), 100);
+}
+
+async function changePassword() {
+  const password = document.getElementById('pwPassword').value;
+  const btn = document.getElementById('pwBtn');
+  if (!password || password.length < 3) return toast('Password minimal 3 karakter', 'error');
+  btn.disabled = true; btn.textContent = 'Menyimpan…';
+  try {
+    await api(`/api/users/${encodeURIComponent(targetUser)}/password`, {
+      method: 'POST',
+      body: JSON.stringify({ password })
+    });
+    toast(`Password ${targetUser} diperbarui`);
+    closeModal('pwModal');
+  } catch (e) {
+    toast(e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Simpan';
+  }
+}
+
+// ---- Delete ----
+function openDeleteModal(username) {
+  targetUser = username;
+  document.getElementById('delUser').textContent = username;
+  openModal('delModal');
+}
+
+async function confirmDelete() {
+  const btn = document.getElementById('delBtn');
+  btn.disabled = true; btn.textContent = 'Menghapus…';
+  try {
+    await api(`/api/users/${encodeURIComponent(targetUser)}`, { method: 'DELETE' });
+    toast(`User ${targetUser} dihapus`);
+    closeModal('delModal');
+    loadUsers();
+  } catch (e) {
+    toast(e.message, 'error');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Hapus';
+  }
+}
+
+// init
+loadInfo();
+loadUsers();
+setInterval(loadUsers, 30000);
+</script>
+</body>
+</html>
